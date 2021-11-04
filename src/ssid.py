@@ -14,7 +14,7 @@ def start(code):
 	ssid = []
 	security = []
 
-	for i in range(len(net_type)):
+	for i in range(len(networks)):
 		if networks[i] not in ssid:
 			ssid.append(networks[i])
 			security.append(net_type[i])
