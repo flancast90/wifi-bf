@@ -8,6 +8,11 @@ _This script is purely for educational use. Any consequenses or damages arising 
 <br />
 
 ### Usage
+
+Clone the git repo and install nmcli:
+
+> apt-get install network-manager
+
 #### Starting
 1. Via executable
 ```bash
