@@ -11,7 +11,9 @@ _This script is purely for educational use. Any consequenses or damages arising 
 
 Clone the git repo and install nmcli:
 
-> apt-get install network-manager
+```bash
+$ apt-get install network-manager
+```
 
 #### Starting
 1. Via executable
@@ -27,8 +29,9 @@ $ python3 __main__.py
 ```
 
 For using your own password dict 
-
-python3 __main__.py --file "PATH YOUR PASS DICT" -v  (verbose)
+```bash
+$ python3 __main__.py --file "PATH YOUR PASS DICT" -v  (verbose)
+```
 
 #### Attacking/Screenshots
 After starting the program, a menu will appear containing all available nearby networks.
