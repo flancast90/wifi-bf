@@ -26,6 +26,10 @@ $ cd path/to/wifi-bg/src
 $ python3 __main__.py
 ```
 
+For using your own password dict 
+
+python3 __main__.py --file "PATH YOUR PASS DICT" -v  (verbose)
+
 #### Attacking/Screenshots
 After starting the program, a menu will appear containing all available nearby networks.
 ![Start Menu](https://i.imgur.com/RWAIroT.png)
