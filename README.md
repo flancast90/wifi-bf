@@ -9,13 +9,7 @@ _This script is purely for educational use. Any consequenses or damages arising 
 
 ### Usage
 #### Starting
-1. Via executable
-```bash
-$ cd path/to/wifi-bf/dist
-$ sudo ./wifi-bf
-```
-
-2. Via python (direct)
+Via python (direct)
 ```bash
 $ cd path/to/wifi-bg/src
 $ python3 __main__.py
