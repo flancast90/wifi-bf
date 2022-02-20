@@ -15,6 +15,16 @@ $ cd path/to/wifi-bg/src
 $ python3 __main__.py
 ```
 
+#### Commands
+wifi-bf has som optional flags/commands that change change its default behaviours. Below is the list given by ``__main__.py --help``:
+```
+optional arguments:
+  -h, --help            show this help message and exit
+  -u URL, --url URL     The url that contains the list of passwords
+  -f FILE, --file FILE  The file that contains the list of passwords
+  -v, --verbose         Optional: Use to show all passwords attempted, rather than just the successful one.
+```
+
 #### Attacking/Screenshots
 After starting the program, a menu will appear containing all available nearby networks.
 ![Start Menu](https://i.imgur.com/RWAIroT.png)
