@@ -186,8 +186,8 @@ def brute_force(selected_network, passwords, args):
             ]
             
             try:
-                process = subprocess.run(commands, capture_output=True, 
-                    text=True, check=True)
+                subprocess.run(commands, capture_output=True, text=True, 
+                    check=True)
                 sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
                     decoded_line+"' succeeded."+bcolors.ENDC)
             except subprocess.CalledProcessError as e:
