@@ -70,6 +70,13 @@ def argument_parser():
     	help='Optional: Use to show all passwords attempted, rather than just the successful one.'
     )
 
+    parser.add_argument(
+    	'-b', '--bssid',
+        type=str,
+        default=None,
+    	help='The target WI-FI BSSID'
+    )
+
     return parser.parse_args()
 
 
@@ -147,7 +154,9 @@ def prompt_for_target_choice(max):
 
 
 def brute_force(selected_network, passwords, args):
+    count = 0
     for password in passwords:
+        count += 1
         # necessary due to NetworkManager restart after unsuccessful attempt at login
         password = password.strip()
 
@@ -158,8 +167,7 @@ def brute_force(selected_network, passwords, args):
             decoded_line = password.decode("utf-8")
             
         if args.verbose is True:
-            print(bcolors.HEADER+"** TESTING **: with password '" +
-                decoded_line+"'"+bcolors.ENDC)
+            print(bcolors.HEADER+f"[{count}] ** TESTING **: with password '" + decoded_line+"'"+bcolors.ENDC)
 
         if (len(decoded_line) >= 8):
             contain = False
@@ -186,19 +194,14 @@ def brute_force(selected_network, passwords, args):
             ]
             
             try:
-                subprocess.run(commands, capture_output=True, text=True, 
-                    check=True)
-                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                    decoded_line+"' succeeded."+bcolors.ENDC)
+                subprocess.run(commands, capture_output=True, text=True, check=True)
+                sys.exit(bcolors.OKGREEN+f"[{count}] ** KEY FOUND! **: password '" + decoded_line+"' succeeded."+bcolors.ENDC)
             except subprocess.CalledProcessError as e:
                 if args.verbose is True:
-                    print(bcolors.FAIL+"** TESTING **: password '" +
-                        decoded_line+"' failed."+bcolors.ENDC)
-
+                    print(bcolors.FAIL+f"[{count}] ** TESTING **: password '" + decoded_line+"' failed."+bcolors.ENDC)
         else:
             if args.verbose is True:
-                print(bcolors.OKCYAN+"** TESTING **: password '" +
-                    decoded_line+"' too short, passing."+bcolors.ENDC)
+                print(bcolors.OKCYAN+f"[{count}] ** TESTING **: password '" + decoded_line+"' too short, passing."+bcolors.ENDC)
 
     print(bcolors.FAIL+"** RESULTS **: All passwords failed :("+bcolors.ENDC)
 
@@ -239,17 +242,30 @@ def main():
         print("No networks found!")
         sys.exit(-1)
 
-    display_targets(networks, security_type)
-    max = len(networks)
-    pick = prompt_for_target_choice(max)
-    target = networks[pick]
+    if args.bssid is None : 
+        display_targets(networks, security_type)
+        max = len(networks)
+        print(networks)
+        pick = prompt_for_target_choice(max)
+        target = networks[pick]
+
+    elif args.bssid in networks :
+        print(bcolors.OKGREEN,f"Network with BSSID {args.bssid} has been found!",bcolors.ENDC)
+        target = args.bssid
     
+    else :
+        print(bcolors.FAIL,f"Not any network with BSSID {args.bssid} has been found!",bcolors.ENDC)
+        exit()
     cls()
     header()
     
-    print("\nWifi-bf is running. If you would like to see passwords being tested in realtime, enable the [--verbose] flag at start.")
-
+    if args.file is None and args.url is None :
+        print("No wordlists provided, defaulting with https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10-million-password-list-top-100000.txt")
+    
+    if args.verbose :
+        print("\nWifi-bf is running. Attempts are shown in realtime.\nPasswords should have at least 8 chars to be attempted !")
+    else :
+        print("\nWifi-bf is running. If you would like to see passwords being tested in realtime, enable the [--verbose] flag at start.\nPasswords should have at least 8 chars to be attempted !")
     brute_force(target, passwords, args)
-
 
 main()
