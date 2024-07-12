@@ -22,6 +22,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -u URL, --url URL     The url that contains the list of passwords
   -f FILE, --file FILE  The file that contains the list of passwords
+  -b BSSID, --bssid BSSID  The target BSSID
   -v, --verbose         Optional: Use to show all passwords attempted, rather than just the successful one.
 ```
 
