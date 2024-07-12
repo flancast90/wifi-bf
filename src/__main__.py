@@ -245,7 +245,6 @@ def main():
     if args.bssid is None : 
         display_targets(networks, security_type)
         max = len(networks)
-        print(networks)
         pick = prompt_for_target_choice(max)
         target = networks[pick]
 
