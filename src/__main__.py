@@ -37,6 +37,7 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    VERBOSEGRAY = '\033[170m'
 
 
 """
@@ -186,11 +187,19 @@ def brute_force(selected_network, passwords, args):
             ]
             
             try:
-                subprocess.run(commands, capture_output=True, text=True, 
+                output = subprocess.run(commands, capture_output=True, text=True, 
                     check=True)
-                sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                    decoded_line+"' succeeded."+bcolors.ENDC)
-            except subprocess.CalledProcessError as e:
+                if "error" in output.stdout.lower():
+                    if args.verbose is True:
+                        print(bcolors.FAIL+"** TESTING **: password '" +
+                            decoded_line+"' failed."+bcolors.ENDC)
+                        print(f"{bcolors.VERBOSEGRAY}{output.stdout}{bcolors.ENDC}")
+                elif "successfull" in output.stdout.lower():
+                    sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
+                        decoded_line+"' succeeded."+bcolors.ENDC)
+                else:
+                    print(f"Unknown output: {output.stdout}")
+            except subprocess.CalledProcessError:
                 if args.verbose is True:
                     print(bcolors.FAIL+"** TESTING **: password '" +
                         decoded_line+"' failed."+bcolors.ENDC)
