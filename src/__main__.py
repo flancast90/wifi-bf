@@ -82,7 +82,38 @@ def fetch_password_from_url(url):
     try:
         return urllib.request.urlopen(url)
     except:
-        sys.exit(bcolors.FAIL+"Fetch failed. Check internet status."+bcolors.ENDC)
+        return None
+
+
+"""
+	This functions saves a list of passwords to a file
+"""
+
+
+def save_passwords_locally(passwords):
+    with open('passwords.txt', 'w') as file:
+            for password in passwords:
+                decoded_line = password.decode("utf-8")
+                file.write(decoded_line)
+
+
+"""
+	This functions checks if a local password file is found
+"""
+
+
+def local_passwords_file_exists():
+    return os.path.exists('passwords.txt')
+
+
+"""
+	This functions returns a local previously downloaded local passwords file
+"""
+
+
+def get_local_passwords():
+    with open('passwords.txt', 'r') as file:        
+        return file.readlines()
 
 
 """
@@ -226,9 +257,17 @@ def main():
             exit(0)
         file.close()
     else:
-        # fallback to the default list as the user didnt supplied a password list
+        # fallback to the default list as the user didn't supply a password list
         default_url = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10-million-password-list-top-100000.txt"
         passwords = fetch_password_from_url(default_url)
+        if passwords:
+            save_passwords_locally(passwords=passwords)
+            passwords = get_local_passwords()
+        elif local_passwords_file_exists():
+            passwords = get_local_passwords()
+        else:
+            sys.exit(bcolors.FAIL+"Fetch failed. Check internet status."+bcolors.ENDC)
+        
 
     # grabbing the list of the network ssids
     func_call = start(1)
