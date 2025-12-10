@@ -1,5 +1,5 @@
 # wifi-bf
-> \[LINUX ONLY\] A (completely native) python3 wifi brute-force attack using the 100k most common passwords (2021)
+> \[MAC ONLY\] A (completely native) python3 wifi brute-force attack using the 100k most common passwords (2025)
 
 <br />
 
@@ -12,11 +12,11 @@ _This script is purely for educational use. Any consequenses or damages arising 
 Via python (direct)
 ```bash
 $ cd path/to/wifi-bg/src
-$ python3 __main__.py
+$ python3 __main_mac__.py
 ```
 
 #### Commands
-wifi-bf has som optional flags/commands that change change its default behaviours. Below is the list given by ``__main__.py --help``:
+wifi-bf has som optional flags/commands that change change its default behaviours. Below is the list given by ``__main_mac__.py --help``:
 ```
 optional arguments:
   -h, --help            show this help message and exit
